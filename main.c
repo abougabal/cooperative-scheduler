@@ -43,28 +43,35 @@
 
 /* Private variables ---------------------------------------------------------*/
 UART_HandleTypeDef huart1;
-struct task{
-	int priority;
-	void (*funcName)(void);
-};
+UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 int taskCount;
-static struct task readyQueue[255];
-static struct task delayQueue[255];
+struct task currentTask;
+struct task readyQueue[255]={NULL};
+struct task delayQueue[255]={NULL};
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART1_UART_Init(void);
+static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-static void init(){
+int num_of_elements(struct task queue[]){
+	int i=0;
+		while(queue[i].funcName != NULL)
+		{
+			i++;
+		}
+		return i;
+}
+void init(){
 	taskCount = 0;
 }
 
@@ -85,21 +92,75 @@ void bubbleSort(struct task arr[], int n)
               swap(&arr[j], &arr[j+1]);
 }
 
-static void QueTask(int priority, void (*funcName)(void)){
-	if(priority > 1 && priority < 8){
-		if(taskCount == 0){
+void QueTask(int priority, void (*funcName)(void)){
+	if(priority >= 1 && priority <= 8){
+		int n = num_of_elements(readyQueue);
+		if(n == 0){
 			readyQueue[0].priority = priority;
 			readyQueue[0].funcName = funcName;
-			taskCount++;
+			//taskCount++;
 		}
 		else{
-			readyQueue[taskCount].priority = priority;
-			readyQueue[taskCount].funcName = funcName;
+			readyQueue[n].priority = priority;
+			readyQueue[n].funcName = funcName;
 			bubbleSort(readyQueue, taskCount);
-			taskCount++;
+			//taskCount++;
 		}
 	}
 }
+
+void ReRunMe(int volatile delayUnit){
+	if(delayUnit == 0){
+		QueTask(currentTask.priority, currentTask.funcName);
+	}
+	else{
+		int volatile n = num_of_elements(delayQueue);
+		delayQueue[n].priority = currentTask.priority;
+		delayQueue[n].funcName = currentTask.funcName;
+		currentTask.delay = delayUnit;
+		delayQueue[n].delay = currentTask.delay;
+		currentTask.currentSysTick = HAL_GetTick();
+	}
+}
+
+int shift(int incr, struct task queue[], int size){
+	int i = 0;
+	while(i < size){
+		queue[i] = queue[i+1];
+		i++;
+	}
+	return(incr--);
+}
+
+void Dispatch(){
+	int n = num_of_elements(readyQueue);
+	//int n = sizeof(readyQueue);
+	if(n != 0){
+		void (*func)(void) = readyQueue[0].funcName;
+		currentTask.funcName = readyQueue[0].funcName;
+		currentTask.priority = readyQueue[0].priority;
+		func();
+		shift(0, readyQueue, n);
+	}
+}
+
+
+
+void TaskA(){
+	// do something here
+	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3);
+	// Rerun again after 10 ticks (500 msec)
+	ReRunMe(1000); 
+}
+
+void TaskB(){
+	// do something here
+	unsigned char temp[2] = {'h', 'i'};
+	HAL_UART_Transmit(&huart2, temp, 1, HAL_MAX_DELAY);
+	// Rerun again after 10 ticks (500 msec)
+	ReRunMe(1000); 
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -132,6 +193,9 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART1_UART_Init();
+  MX_USART2_UART_Init();
+	QueTask(1,TaskA);
+	QueTask(2,TaskB);
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -141,7 +205,7 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
+		Dispatch();
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -181,8 +245,9 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_USART2;
   PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
+  PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
@@ -227,6 +292,41 @@ static void MX_USART1_UART_Init(void)
   /* USER CODE BEGIN USART1_Init 2 */
 
   /* USER CODE END USART1_Init 2 */
+
+}
+
+/**
+  * @brief USART2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART2_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART2_Init 0 */
+
+  /* USER CODE END USART2_Init 0 */
+
+  /* USER CODE BEGIN USART2_Init 1 */
+
+  /* USER CODE END USART2_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 115200;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART2_Init 2 */
+
+  /* USER CODE END USART2_Init 2 */
 
 }
 
