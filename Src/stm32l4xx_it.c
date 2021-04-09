@@ -60,8 +60,10 @@ extern struct task delayQueue[255];
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern TIM_HandleTypeDef htim1;
 extern UART_HandleTypeDef huart1;
 extern UART_HandleTypeDef huart2;
+extern uint8_t capture_counter;  // is the first value captured ?
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -192,7 +194,13 @@ void SysTick_Handler(void)
   HAL_IncTick();
 	int n = num_of_elements(delayQueue);
 	int i = 0;
+	unsigned char temp[1] = {'1'};
+	unsigned char temp2[2] = {'0'};
 	
+	if(capture_counter == 0)
+		HAL_UART_Transmit(&huart2, temp, 1, 10);
+	else
+		HAL_UART_Transmit(&huart2, temp2, 1, 10);
 	while(i < n){
 		delayQueue[i].delay--;
 //		HAL_UART_Transmit(&huart2, (uint8_t*) delayQueue[i].delay, 1, HAL_MAX_DELAY);
@@ -214,6 +222,20 @@ void SysTick_Handler(void)
 /* For the available peripheral interrupt handler names,                      */
 /* please refer to the startup file (startup_stm32l4xx.s).                    */
 /******************************************************************************/
+
+/**
+  * @brief This function handles TIM1 capture compare interrupt.
+  */
+void TIM1_CC_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM1_CC_IRQn 0 */
+
+  /* USER CODE END TIM1_CC_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim1);
+  /* USER CODE BEGIN TIM1_CC_IRQn 1 */
+
+  /* USER CODE END TIM1_CC_IRQn 1 */
+}
 
 /**
   * @brief This function handles USART1 global interrupt.
