@@ -20,7 +20,8 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-
+#include <stdio.h>
+#include <stdlib.h>
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -63,7 +64,7 @@ static void MX_GPIO_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM1_Init(void);
-uint8_t capture_counter = 0;
+uint8_t capture_counter;
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -72,14 +73,23 @@ uint8_t capture_counter = 0;
 /* USER CODE BEGIN 0 */
 int num_of_elements(struct task queue[]){
 	int i=0;
-		while(queue[i].funcName != NULL)
+		while((queue[i].funcName != NULL)&& i < 255)
 		{
 			i++;
 		}
 		return i;
 }
+
+uint8_t hexToAscii(uint8_t n)//4-bit hex value converted to an ascii character
+{
+ if (n>=0 && n<=9) n = n + '0';
+ else n = n - 10 + 'A';
+ return n;
+}
+
 void init(){
 	taskCount = 0;
+	capture_counter = 0;
 }
 
 void swap(struct task *xp, struct task *yp)
@@ -95,11 +105,14 @@ void bubbleSort(struct task arr[], int n)
    for (i = 0; i < n-1; i++)
        // Last i elements are already in place   
        for (j = 0; j < n-i-1; j++) 
+					if(arr[j].priority >= 1 && arr[j].priority <= 8 && arr[j+1].priority >= 1 && arr[j+1].priority <= 8){
            if (arr[j].priority > arr[j+1].priority)
               swap(&arr[j], &arr[j+1]);
+				 }
 }
 
 void QueTask(int priority, void (*funcName)(void)){
+	unsigned char temp[8] = {'F', 'A', 'I', 'L', '\r', '\n'};
 	if(priority >= 1 && priority <= 8){
 		int n = num_of_elements(readyQueue);
 		if(n == 0){
@@ -114,6 +127,8 @@ void QueTask(int priority, void (*funcName)(void)){
 			//taskCount++;
 		}
 	}
+	else
+		HAL_UART_Transmit(&huart2, temp, 6, 10);
 }
 
 void ReRunMe(int volatile delayUnit){
@@ -132,7 +147,7 @@ void ReRunMe(int volatile delayUnit){
 
 int shift(int incr, struct task queue[], int size){
 	int i = 0;
-	while(i < size){
+	while(i <= size){
 		queue[i] = queue[i+1];
 		i++;
 	}
@@ -140,7 +155,7 @@ int shift(int incr, struct task queue[], int size){
 }
 
 void Dispatch(){
-	int n = num_of_elements(readyQueue);
+	int volatile n = num_of_elements(readyQueue);
 	//int n = sizeof(readyQueue);
 	if(n != 0){
 		void (*func)(void) = readyQueue[0].funcName;
@@ -148,6 +163,7 @@ void Dispatch(){
 		currentTask.priority = readyQueue[0].priority;
 		func();
 		shift(0, readyQueue, n);
+		bubbleSort(readyQueue, n);
 	}
 }
 
@@ -159,7 +175,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
 	if (htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)  // if the interrupt source is channel1
 	{
-		if (capture_counter==0) // if the first value is not captured
+		if (capture_counter==0)
 		{
 			capture_counter = 1;  // set the first captured as true
 			HAL_GPIO_WritePin(buzz_PORT, buzz_pin, GPIO_PIN_RESET);
@@ -167,36 +183,92 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_1, TIM_INPUTCHANNELPOLARITY_FALLING);
 		}
 
-		else if (capture_counter==1)   // if the first is already captured
+		else
 		{
 			__HAL_TIM_SET_COUNTER(htim, 0);  // reset the counter
 			HAL_GPIO_WritePin(buzz_PORT, buzz_pin, GPIO_PIN_SET);
-			
 			capture_counter = 0; // set it back to false
-
 			// set polarity to rising edge
 			__HAL_TIM_SET_CAPTUREPOLARITY(htim, TIM_CHANNEL_1, TIM_INPUTCHANNELPOLARITY_RISING);
 			__HAL_TIM_DISABLE_IT(&htim1, TIM_IT_CC1);
 		}
+		
 	}
 }
 
 void TaskA(){
+//	unsigned char temp[8] = {'T', 'A', 'S', 'K', ' ', '1', '\r', '\n'};
+//	HAL_UART_Transmit(&huart2, temp, 8, 10);
+//	ReRunMe(0);
 	// do something here
 	HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_1);
 	HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_3);
 	// Rerun again after 10 ticks (500 msec)
-//	ReRunMe(1000); 
+	//ReRunMe(1000); 
 }
 
 void TaskB(){
+//	unsigned char temp[8] = {'T', 'A', 'S', 'K', ' ', '2', '\r', '\n'};
+//	HAL_UART_Transmit(&huart2, temp, 8, 10);
+//	ReRunMe(0);
 	HAL_GPIO_WritePin(TRIG_PORT, TRIG_PIN, GPIO_PIN_SET);  // pull the TRIG pin HIGH
 	HAL_Delay(10);  // wait for 10 us
 	HAL_GPIO_WritePin(TRIG_PORT, TRIG_PIN, GPIO_PIN_RESET);  // pull the TRIG pin low
 
 	__HAL_TIM_ENABLE_IT(&htim1, TIM_IT_CC1);
 	// Rerun again after 10 ticks (500 msec)
-	ReRunMe(5); 
+	ReRunMe(1); 
+}
+void TaskC(){
+	unsigned char temp[8] = {'T', 'A', 'S', 'K', ' ', '3', '\r', '\n'};
+	HAL_UART_Transmit(&huart2, temp, 8, 10);
+	ReRunMe(0);
+//	HAL_GPIO_WritePin(TRIG_PORT, TRIG_PIN, GPIO_PIN_SET);  // pull the TRIG pin HIGH
+//	HAL_Delay(10);  // wait for 10 us
+//	HAL_GPIO_WritePin(TRIG_PORT, TRIG_PIN, GPIO_PIN_RESET);  // pull the TRIG pin low
+
+//	__HAL_TIM_ENABLE_IT(&htim1, TIM_IT_CC1);
+//	// Rerun again after 10 ticks (500 msec)
+//	ReRunMe(5); 
+}
+
+void test(){
+	// Tests
+	unsigned char temp[11] = {'T', 'E', 'S', 'T', ' ', 'F', 'A', 'I', 'L', '\r', '\n'};
+	unsigned char temp2[11] = {'T', 'E', 'S', 'T', ' ', 'S', 'U', 'C', 'C', '\r', '\n'};
+	struct task test_shift[255] = {NULL};
+	int xs = 0;
+	int change = 0;
+	for(xs = 0; xs < 50; xs++){
+		if(change == 0){
+			test_shift[xs].funcName = TaskA;
+			test_shift[xs].priority = 1;
+			TaskA();
+			change = 1;
+		}
+		else{
+			test_shift[xs].funcName = TaskB;
+			test_shift[xs].priority = 4;
+			TaskB();
+			change = 0;
+		}
+	}
+	for(xs = 0; xs < 50; xs++){
+		void (*func)(void) = test_shift[xs].funcName;
+		func();
+	}
+	int volatile n = num_of_elements(test_shift);
+	bubbleSort(test_shift, n);
+	if(n != 50)
+		HAL_UART_Transmit(&huart2, temp, sizeof(temp), HAL_MAX_DELAY);
+	else
+		HAL_UART_Transmit(&huart2, temp2, 11, HAL_MAX_DELAY);
+	shift(0, test_shift, n);
+	n = num_of_elements(test_shift);
+	if(n != 49)
+		HAL_UART_Transmit(&huart2, temp, 11, HAL_MAX_DELAY);
+	else
+		HAL_UART_Transmit(&huart2, temp2, 11, HAL_MAX_DELAY);
 }
 
 /* USER CODE END 0 */
@@ -234,7 +306,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-//	HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_1);
+	init();
 	QueTask(1,TaskA);
 	QueTask(2,TaskB);
   /* USER CODE END 2 */
@@ -407,7 +479,7 @@ static void MX_USART2_UART_Init(void)
 
   /* USER CODE END USART2_Init 1 */
   huart2.Instance = USART2;
-  huart2.Init.BaudRate = 115200;
+  huart2.Init.BaudRate = 9600;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
   huart2.Init.StopBits = UART_STOPBITS_1;
   huart2.Init.Parity = UART_PARITY_NONE;
