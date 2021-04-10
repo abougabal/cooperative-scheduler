@@ -82,3 +82,4 @@ and resets when going from high to low, that pin delivers the voltage to the pos
 The video for the parking sensor:
 
 ![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/parkingSensor.mp4)
+
