@@ -1,7 +1,8 @@
 # cooperative-scheduler
 
-## By Marwan Abbas 900153642
-##    Omar Abu Gabal 
+## By
+### Marwan Abbas 900153642
+### Omar Abu Gabal 900162146
 
 # project explenation
 
