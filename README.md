@@ -32,11 +32,11 @@ This screenshot shows the ready queue before sorting and shifting
 
 This screenshot shows the ready queue after shifting
 
-![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/afterShifting.png)
+![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/afterShifting.PNG)
 
 This screenshot shows the ready queue after sorting
 
-![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/afterSorting.png)
+![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/afterSorting.PNG)
 
 
 ## First Test
@@ -82,4 +82,3 @@ and resets when going from high to low, that pin delivers the voltage to the pos
 The video for the parking sensor:
 
 ![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/parkingSensor.mp4)
-
