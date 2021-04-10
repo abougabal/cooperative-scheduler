@@ -28,15 +28,15 @@ These screenshots shows the test function running on teraterm
 
 This screenshot shows the ready queue before sorting and shifting
 
-![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/before shiftin.png)
+![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/beforeShifting.png)
 
 This screenshot shows the ready queue after shifting
 
-![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/after shiftin.png)
+![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/afterShifting.png)
 
 This screenshot shows the ready queue after sorting
 
-![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/after sorting.png)
+![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/afterSorting.png)
 
 
 ## First Test
@@ -57,13 +57,13 @@ This screenshot shows that the task runs every 5 ticks
 
 This test shows 2 tasks running with 2 different priorities, task 1 is priority 1 and task 2 is priority 5
 
-![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/2 tasks different priority same delay.png)
+![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/2TasksDifferentPrioritySameDelay.png)
 
 ## Fourth Test
 
 This test shows 2 tasks running with 2 tasks running the same priorities
 
-![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/same priority.png)
+![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/samePriority.png)
 
 
 # Applications
@@ -81,4 +81,4 @@ and resets when going from high to low, that pin delivers the voltage to the pos
 
 The video for the parking sensor:
 
-
+![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/parkingSensor.mp4)
