@@ -26,18 +26,59 @@ For the unit tests, we developed a function called Test
 This function tests the bubble sort, size function, and shifting function
 These screenshots shows the test function running on teraterm
 
-![alt text]
+This screenshot shows the ready queue before sorting and shifting
 
-# First Test
+![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/before shiftin.png)
+
+This screenshot shows the ready queue after shifting
+
+![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/after shiftin.png)
+
+This screenshot shows the ready queue after sorting
+
+![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/after sorting.png)
+
+
+## First Test
 
 This screenshot is showing one task running with the ReRunMe(0) function
 
 ![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/test1.png)
 
-# Second Test
+## Second Test
 
 This screenshot is showign one task running with the ReRunMe(5) function
 There is a function inside the systick handler that counts ticks and displays it
 This screenshot shows that the task runs every 5 ticks
 
 ![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/test2.png)
+
+## Third Test
+
+This test shows 2 tasks running with 2 different priorities, task 1 is priority 1 and task 2 is priority 5
+
+![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/2 tasks different priority same delay.png)
+
+## Fourth Test
+
+This test shows 2 tasks running with 2 tasks running the same priorities
+
+![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/same priority.png)
+
+
+# Applications
+
+## Parking sensor
+
+For the parking sensor application we used two tasks one to start the interrupt of TIM of channel 1, this task has the high priority and doesn't have
+the ReRunMe function as we need it once.
+
+The second task is periodic with 1 tick, this is not optimal as it should run every 1ms, but the handout specified that the tick should be 50ms
+The second task is used to pull the trigger pin high and low with a delay of 10us inbetween as specified in the datasheet
+
+We then triggered a set and reset flag to a GPIO output pin, that sets the flag when the TIM edge is going from low to high
+and resets when going from high to low, that pin delivers the voltage to the positive side of the buzzer, and the other side is connected to the gnd
+
+The video for the parking sensor:
+
+
