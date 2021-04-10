@@ -39,4 +39,4 @@ This screenshot is showign one task running with the ReRunMe(5) function
 There is a function inside the systick handler that counts ticks and displays it
 This screenshot shows that the task runs every 5 ticks
 
-![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/test1.png)
+![alt text](https://github.com/marwaneltoukhy/cooperative-scheduler/blob/main/test2.png)
