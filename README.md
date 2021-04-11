@@ -20,6 +20,16 @@ The Tick is changed from the systick by changing the function HAL_InitTick
 inside the function we made this change: HAL_SYSTICK_Config(SystemCoreClock / (1000U / 200))
 That means that the tick interrupt is made every 50ms rather than every 1ms
 
+##components 
+
+#Software
+1) keil uvision5
+2) STM32CubeMX
+
+#Hardware
+1) STM32l432KC " STM32 Nucleo Board"
+2) RTC DS3231
+
 # Unit Tests
 
 For the unit tests, we developed a function called Test
@@ -82,3 +92,11 @@ and resets when going from high to low, that pin delivers the voltage to the pos
 The video for the parking sensor:
 
 https://drive.google.com/file/d/1ult3LfOk92hzTDsH2xhIL7eVNQtFCnzQ/view?usp=sharing 
+
+## Tempreture Reading
+for this task we divided the application into 4 tasks, one that keep reading the outside tempreture every 30 seconds, the second task takes the threshold from the user that it will compare the reading with to see if the alarm should be set of or not, the third task is change the reading from the user from 4 numbers into a float number, i.e the user will enter 2575 and the task will translate it into 25.75 and the final task check the sensor reading and the threashold taking from the user if the sensor reading is higher than or equal to that threashold then the alarm will be set of, the alarm is turing on the Green led, and writing Alarm on UART1
+
+
+The videos for the tempreture Reading
+
+https://drive.google.com/drive/folders/1a7HJ5nZSbr6aPpxLo_97hRTqIg3uQ7--?usp=sharing
