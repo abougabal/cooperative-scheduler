@@ -20,13 +20,13 @@ The Tick is changed from the systick by changing the function HAL_InitTick
 inside the function we made this change: HAL_SYSTICK_Config(SystemCoreClock / (1000U / 200))
 That means that the tick interrupt is made every 50ms rather than every 1ms
 
-##components 
+## Components 
 
-#Software
+# Software
 1) keil uvision5
 2) STM32CubeMX
 
-#Hardware
+# Hardware
 1) STM32l432KC " STM32 Nucleo Board"
 2) RTC DS3231
 
