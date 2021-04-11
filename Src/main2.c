@@ -42,6 +42,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+I2C_HandleTypeDef hi2c1;
+
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
@@ -50,16 +52,19 @@ int taskCount;
 struct task currentTask;
 struct task readyQueue[255]={NULL};
 struct task delayQueue[255]={NULL};
-uint8_t Whole_num[2],Decumal_place[2];
-Whole_num[0]=0x11; //register for the whole numbers
-Decumal_place[0]=0x12; //register for the decimal place
+float threshold_num;
+float temp_reading;
+uint8_t Rx_data[4];
+uint8_t  Whole_num[2],Decumal_place[2];
 uint8_t I2C_to_UART[] = {0,0,'.',0,0, '\r', '\n'};
+
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_I2C1_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
@@ -68,24 +73,29 @@ static void MX_USART2_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+int num_of_elements(struct task queue[]){
+	int i=0;
+		while((queue[i].funcName != NULL)&& i < 255)
+		{
+			i++;
+		}
+		return i;
+}
+
 uint8_t hexToAscii(uint8_t n)//4-bit hex value converted to an ascii character
 {
  if (n>=0 && n<=9) n = n + '0';
  else n = n - 10 + 'A';
  return n;
 }
-
-int num_of_elements(struct task queue[]){
-	int i=0;
-		while(queue[i].funcName != NULL)
-		{
-			i++;
-		}
-		return i;
-}
 void init(){
 	taskCount = 0;
+	threshold_num=0.0;
+	temp_reading=0.0;
+	Whole_num[0]=0x11; //register for the whole numbers
 	HAL_I2C_Master_Transmit(&hi2c1, 0xD0, Whole_num, 2, 10);
+	Decumal_place[0]=0x12;
 	HAL_I2C_Master_Transmit(&hi2c1, 0xD0, Decumal_place, 2, 10);
 }
 
@@ -102,11 +112,14 @@ void bubbleSort(struct task arr[], int n)
    for (i = 0; i < n-1; i++)
        // Last i elements are already in place   
        for (j = 0; j < n-i-1; j++) 
+					if(arr[j].priority >= 1 && arr[j].priority <= 8 && arr[j+1].priority >= 1 && arr[j+1].priority <= 8){
            if (arr[j].priority > arr[j+1].priority)
               swap(&arr[j], &arr[j+1]);
+				 }
 }
 
 void QueTask(int priority, void (*funcName)(void)){
+	unsigned char temp[8] = {'F', 'A', 'I', 'L', '\r', '\n'};
 	if(priority >= 1 && priority <= 8){
 		int n = num_of_elements(readyQueue);
 		if(n == 0){
@@ -121,6 +134,8 @@ void QueTask(int priority, void (*funcName)(void)){
 			//taskCount++;
 		}
 	}
+	else
+		HAL_UART_Transmit(&huart2, temp, 6, 10);
 }
 
 void ReRunMe(int volatile delayUnit){
@@ -139,7 +154,7 @@ void ReRunMe(int volatile delayUnit){
 
 int shift(int incr, struct task queue[], int size){
 	int i = 0;
-	while(i < size){
+	while(i <= size){
 		queue[i] = queue[i+1];
 		i++;
 	}
@@ -147,7 +162,7 @@ int shift(int incr, struct task queue[], int size){
 }
 
 void Dispatch(){
-	int n = num_of_elements(readyQueue);
+	int volatile n = num_of_elements(readyQueue);
 	//int n = sizeof(readyQueue);
 	if(n != 0){
 		void (*func)(void) = readyQueue[0].funcName;
@@ -155,53 +170,102 @@ void Dispatch(){
 		currentTask.priority = readyQueue[0].priority;
 		func();
 		shift(0, readyQueue, n);
+		bubbleSort(readyQueue, n);
 	}
 }
 
 
-
 void TaskA(){
- HAL_I2C_Master_Transmit(&hi2c1, 0xD0, Whole_num, 1, 10);
- HAL_I2C_Master_Receive(&hi2c1, 0xD1, Whole_num+1, 1, 10);
-	 uint8_t num =  Whole_num[1]/10;
-	 uint8_t rem =  Whole_num[1]%10;
-	 temp_out[0] = hexToAscii(num);
-	 temp_out[1] = hexToAscii(rem);
-		
+	HAL_I2C_Master_Transmit(&hi2c1, 0xD0, Whole_num, 1, 10);
+	HAL_I2C_Master_Receive(&hi2c1, 0xD1, Whole_num+1, 1, 10);
+	 uint8_t volatile num =  Whole_num[1]/10;
+	 uint8_t  volatile rem =  Whole_num[1]%10;
+	temp_reading=0.0;
+	 I2C_to_UART[0] = hexToAscii(num);
+	 I2C_to_UART[1] = hexToAscii(rem);
+	temp_reading+=(I2C_to_UART[0]-'0')*10;
+	temp_reading+=I2C_to_UART[1]-'0';
 	 //Getting the decimal place	
 	 HAL_I2C_Master_Transmit(&hi2c1, 0xD0, Decumal_place, 1, 10);
 	 HAL_I2C_Master_Receive(&hi2c1, 0xD1, Decumal_place+1, 1, 10);
 	 if(Decumal_place[1] == 0)
 	 {
-		 temp_out[3] = hexToAscii(0x0);
-		 temp_out[4] = hexToAscii(0x0);
+		 I2C_to_UART[3] = hexToAscii(0x0);
+		 I2C_to_UART[4] = hexToAscii(0x0);
 	 }
 	 else if(Decumal_place[1] == 64)
 	 {
-		 temp_out[3] = hexToAscii(0x2);
-		 temp_out[4] = hexToAscii(0x5);
+		 I2C_to_UART[3] = hexToAscii(0x2);
+		 I2C_to_UART[4] = hexToAscii(0x5);
 	 }
 	 else if(Decumal_place[1] == 128)
 	 {
-		 temp_out[3] = hexToAscii(0x5);
-		 temp_out[4] = hexToAscii(0x0);
+		 I2C_to_UART[3] = hexToAscii(0x5);
+		 I2C_to_UART[4] = hexToAscii(0x0);
 	 }
 	 else if(Decumal_place[1] == 192)
 	 {
-		 temp_out[3] = hexToAscii(0x7);
-		 temp_out[4] = hexToAscii(0x5);
+		 I2C_to_UART[3] = hexToAscii(0x7);
+		 I2C_to_UART[4] = hexToAscii(0x5);
 	 }
-		
+	 float volatile temptrial=(I2C_to_UART[3]-'0');
+	 float volatile temptrial2=(I2C_to_UART[4]-'0');
+		temp_reading+=temptrial/10;
+		temp_reading+=temptrial2/100;
 	 // transmit temp to UART
-	 HAL_UART_Transmit(&huart2,temp_out, sizeof(temp_out), 10);
+	 HAL_UART_Transmit(&huart1,I2C_to_UART, sizeof(I2C_to_UART), 10);
+	 HAL_UART_Transmit(&huart2,I2C_to_UART, sizeof(I2C_to_UART), 10);
+	 ReRunMe(30000);
+	//ReRunMe(1000); 
 }
 
 void TaskB(){
-	// do something here
-	unsigned char temp[2] = {'h', 'i'};
-	HAL_UART_Transmit(&huart2, temp, 1, HAL_MAX_DELAY);
-	// Rerun again after 10 ticks (500 msec)
-	ReRunMe(1000); 
+	
+
+		uint8_t temp_message[]={'t','e','m','p','\r', '\n'};
+		
+		HAL_UART_Transmit(&huart1,temp_message,6,HAL_MAX_DELAY);
+		int counter2=0;
+	  int num_counter_1;
+		HAL_UART_Receive(&huart1,Rx_data,4,HAL_MAX_DELAY);
+		HAL_UART_Transmit(&huart1,Rx_data,4,HAL_MAX_DELAY);;
+
+}
+
+
+void TaskC()
+{
+	int num_counter_1;
+	float tempnum2=0.0;
+	threshold_num=0;
+			uint8_t temp_message[]={'t','h','r','e','s','h','o','l','d','\r', '\n'};
+		
+		HAL_UART_Transmit(&huart1,temp_message,11,HAL_MAX_DELAY);
+			for (num_counter_1=0;num_counter_1<4;num_counter_1++)
+		{
+			tempnum2=(Rx_data[num_counter_1]-'0');
+			if (num_counter_1==0)
+			threshold_num= threshold_num +tempnum2*10;
+			else if (num_counter_1==1)
+			threshold_num= threshold_num + tempnum2;
+			else if (num_counter_1==2)
+				threshold_num= threshold_num + tempnum2/10;
+			else
+				threshold_num= threshold_num + tempnum2/100;
+		}
+}
+
+void TaskD()
+{
+				uint8_t temp_message[]={'a','l','a','r','m','\r', '\n'};
+		
+		
+if (threshold_num<=temp_reading)
+{
+HAL_GPIO_TogglePin(GPIOB,GPIO_PIN_3);
+HAL_UART_Transmit(&huart1,temp_message,7,HAL_MAX_DELAY);
+}
+
 }
 
 /* USER CODE END 0 */
@@ -235,12 +299,15 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_I2C1_Init();
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
-	QueTask(1,TaskA);
-	QueTask(2,TaskB);
   /* USER CODE BEGIN 2 */
-
+	init();
+	QueTask(1,TaskA);	
+	QueTask(2,TaskB);	
+	QueTask(3,TaskC);
+	QueTask(4,TaskD);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -249,6 +316,8 @@ int main(void)
   {
     /* USER CODE END WHILE */
 		Dispatch();
+	//	HAL_UART_Transmit(&huart1,(uint8_t*)'1',1,HAL_MAX_DELAY);
+		//HAL_UART_Transmit(&huart2,(uint8_t*)'2',1,HAL_MAX_DELAY);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
@@ -288,9 +357,11 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_USART2;
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_USART1|RCC_PERIPHCLK_USART2
+                              |RCC_PERIPHCLK_I2C1;
   PeriphClkInit.Usart1ClockSelection = RCC_USART1CLKSOURCE_PCLK2;
   PeriphClkInit.Usart2ClockSelection = RCC_USART2CLKSOURCE_PCLK1;
+  PeriphClkInit.I2c1ClockSelection = RCC_I2C1CLKSOURCE_PCLK1;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
   {
     Error_Handler();
@@ -301,6 +372,52 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief I2C1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C1_Init(void)
+{
+
+  /* USER CODE BEGIN I2C1_Init 0 */
+
+  /* USER CODE END I2C1_Init 0 */
+
+  /* USER CODE BEGIN I2C1_Init 1 */
+
+  /* USER CODE END I2C1_Init 1 */
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.Timing = 0x00000E14;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure Analogue filter 
+  */
+  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /** Configure Digital filter 
+  */
+  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C1_Init 2 */
+
+  /* USER CODE END I2C1_Init 2 */
+
 }
 
 /**
@@ -354,7 +471,7 @@ static void MX_USART2_UART_Init(void)
 
   /* USER CODE END USART2_Init 1 */
   huart2.Instance = USART2;
-  huart2.Init.BaudRate = 115200;
+  huart2.Init.BaudRate = 9600;
   huart2.Init.WordLength = UART_WORDLENGTH_8B;
   huart2.Init.StopBits = UART_STOPBITS_1;
   huart2.Init.Parity = UART_PARITY_NONE;
@@ -387,7 +504,23 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_0|GPIO_PIN_4, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : PA0 PA4 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_4;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PA1 */
+  GPIO_InitStruct.Pin = GPIO_PIN_1;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pin : PB3 */
   GPIO_InitStruct.Pin = GPIO_PIN_3;
